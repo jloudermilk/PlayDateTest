@@ -8,20 +8,32 @@ import "CoreLibs/object"
 import "CoreLibs/graphics"
 import "CoreLibs/sprites"
 import "CoreLibs/timer"
+import "CoreLibs/crank"
+import "CoreLibs/ui"
+import "lib/AnimatedSprite.lua"
 
--- Declaring this "gfx" shorthand will make your life easier. Instead of having
--- to preface all graphics calls with "playdate.graphics", just use "gfx."
--- Performance will be slightly enhanced, too.
--- NOTE: Because it's local, you'll have to do it in every .lua source file.
 
 local gfx <const> = playdate.graphics
+local ui <const> = playdate.ui
 
 -- Here's our player sprite declaration. We'll scope it to this file because
 -- several functions need to access it.
 
 local playerSprite = nil
+local cranked = nil
+local crankAcc = 0
+local crankCoolDown = 0;
+
+ui.crankIndicator:start()
+ui.crankIndicator.clockwise = true
+
+imagetable = playdate.graphics.imagetable.new("img/bat") -- Loading imagetable from the disk
+playerSprite = AnimatedSprite.new(imagetable) -- Creating AnimatedSprite instance
+playerSprite:addState("glide", 1,1)
+playerSprite:addState("flyup", 1, 5, {tickStep = 4})
 
 -- A function to set up our game environment.
+
 
 function myGameSetUp()
 
@@ -29,13 +41,10 @@ function myGameSetUp()
 	-- The :setCenter() call specifies that the sprite will be anchored at its center.
 	-- The :moveTo() call moves our sprite to the center of the display.
 
-	local playerImage = gfx.image.new("img/bat.png")
-	assert( playerImage ) -- make sure the image was where we thought
 
-	playerSprite = gfx.sprite.new( playerImage )
 	playerSprite:moveTo( 200, 120 ) -- this is where the center of the sprite is placed; (200,120) is the center of the Playdate screen
 	playerSprite:add() -- This is critical!
-
+	playerSprite:playAnimation()
 	-- We want an environment displayed behind our sprite.
 	-- There are generally two ways to do this:
 	-- 1) Use setBackgroundDrawingCallback() to draw a background image. (This is what we're doing below.)
@@ -73,24 +82,50 @@ function playdate.update()
 	-- Note that it is possible for more than one of these directions
 	-- to be pressed at once, if the user is pressing diagonally.
 
+
+	
+	if playdate.isCrankDocked() then
+		playdate.ui.crankIndicator:update()
+	else
+		crankAcc = playdate.getCrankTicks(24)
+	end
+	
+	playerSprite:update()
+	gfx.sprite.update()
+	playdate.timer.updateTimers()
+
+end
+function playerSprite:update()
+	
+	
 	if playdate.buttonIsPressed( playdate.kButtonUp ) then
 		playerSprite:moveBy( 0, -2 )
 	end
 	if playdate.buttonIsPressed( playdate.kButtonRight ) then
 		playerSprite:moveBy( 2, 0 )
+		playerSprite.globalFlip = gfx.kImageFlippedX
 	end
 	if playdate.buttonIsPressed( playdate.kButtonDown ) then
 		playerSprite:moveBy( 0, 2 )
 	end
 	if playdate.buttonIsPressed( playdate.kButtonLeft ) then
 		playerSprite:moveBy( -2, 0 )
+		playerSprite.globalFlip = gfx.kImageUnflipped
 	end
-
-	-- Call the functions below in playdate.update() to draw sprites and keep
-	-- timers updated. (We aren't using timers in this example, but in most
-	-- average-complexity games, you will.)
-
-	gfx.sprite.update()
-	playdate.timer.updateTimers()
-
+	if playdate.buttonIsPressed( playdate.kButtonA ) then --this doesnt work why?
+		print("A down")
+	end
+	if crankAcc == 1 then
+		print('positive')
+		playerSprite:changeState("flyup")
+		crankCoolDown = 0
+	elseif (crankAcc == -1) then
+		print('negative')
+	elseif (crankCoolDown > 30) then
+		playerSprite:changeState("glide")
+	else
+		crankCoolDown += 1
+	end
+	playerSprite:updateAnimation()
+	playerSprite:playAnimation()
 end
