@@ -22,6 +22,8 @@ local ui <const> = playdate.ui
 local playerSprite = nil
 local cranked = nil
 local crankAcc = 0
+local change = 0
+local acceleratedChange = 0
 local crankCoolDown = 0;
 
 ui.crankIndicator:start()
@@ -88,6 +90,7 @@ function playdate.update()
 		playdate.ui.crankIndicator:update()
 	else
 		crankAcc = playdate.getCrankTicks(24)
+		change, acceleratedChange = playdate.getCrankChange()
 	end
 	
 	playerSprite:update()
@@ -128,4 +131,5 @@ function playerSprite:update()
 	end
 	playerSprite:updateAnimation()
 	playerSprite:playAnimation()
+	print('speed: ', change)
 end
